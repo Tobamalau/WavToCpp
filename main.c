@@ -32,6 +32,7 @@ int16_t * rightChannel = NULL;
 uint16_t DAC_max = 4096;
 uint16_t DAC_shift = 2048;
 
+
 /// DAC resolution set for C format
 uint16_t ConvertToDACValue(int16_t value)
 {
@@ -101,19 +102,29 @@ void printfHeader(sWavHeader * header)
   printf("--------------------------------------.\n");
 }
 
-void fprintfChannel(FILE *pFile , int16_t * array, uint32_t size)
+void fprintfChannel(FILE *pFile , int16_t * array, uint32_t size, int cellv)
 {
+  int j = 1;	
   for (uint32_t i = 0; i<size; ++i)
   {
-    fprintf(pFile, "%d, // %d\n",ConvertToDACValue(array[i]), array[i]);
-  }
+    if(j<cellv)
+    {   
+    	fprintf(pFile, "%d,\t", array[i]);
+	j++;
+    }
+    if(j==cellv)
+    {
+	fprintf(pFile, "\n%d,\t", array[i]);
+	j=1;
+    }
+  } 
 }
 
 void fprintfChannelMatlab(FILE *pFile , int16_t * array, uint32_t size)
 {
   for (uint32_t i = 0; i<size; ++i)
   {
-    fprintf(pFile, "%d ",array[i]);
+    fprintf(pFile, "%d,\n ",array[i]);
   }
 }
 
@@ -166,30 +177,29 @@ void readWavData(int fileId, sWavHeader * header)
   }
 }
 
-void writeAsCFile(int16_t *leftChannel, int16_t *rightChannel,  sWavHeader * header)
+void writeAsCFile(int16_t *leftChannel, int16_t *rightChannel,  sWavHeader * header, int cellv)
 {
   FILE * pFile;
-  pFile = fopen("sound.c","w");
+  pFile = fopen("sound.h","w");
 
   /// header
-  fprintf(pFile, "#include <stdint.h>\n");
-  fprintf(pFile, "#include <stdio.h>\n");
   fprintf(pFile, "const uint32_t audioSamplingFrequency = %d;\n",header->SampleRate);
-
   /// printf left Channel
   fprintf(pFile, "const size_t leftChannelSize = %d;\n",numOfSamples);
-  fprintf(pFile, "const uint16_t leftChannel[] = {\n");
-  fprintfChannel(pFile, leftChannel, numOfSamples);
+  fprintf(pFile, "const static int16_t m_musik_table[leftChannelSize] =\n{");
+  fprintfChannel(pFile, leftChannel, numOfSamples, cellv);
   fprintf(pFile, "};\n");
+
 
   if(header->NumChannels > 1)
   {
     /// printf right Channel
     fprintf(pFile, "uint16_t rightChannel[] = {\n");
-    fprintfChannel(pFile, rightChannel, numOfSamples);
-    fprintf(pFile, "};\n");
+    fprintfChannel(pFile, rightChannel, numOfSamples, cellv);
+    fprintf(pFile, "};\n");    
   }
   fclose(pFile);
+
 }
 
 void writeAsMatlabFile(int16_t *leftChannel, int16_t *rightChannel,  sWavHeader * header)
@@ -223,13 +233,21 @@ void writeAsMatlabFile(int16_t *leftChannel, int16_t *rightChannel,  sWavHeader 
 
 int main(int argc, char * argv[])
 {
+
+
     sWavHeader wavHeader;
     /// check arguments
-    if (argc<2)
+    if (argc<3)
     {
-        printf("No arguments!.\n");
+        printf("More arguments! wave File and Cells\n");
         return -1;
     }
+	char *P;	
+	int cellv=atoi(argv[2]);
+
+
+
+
 
     /// read header
     printf("Opening file %s.\n", argv[1]);
@@ -239,7 +257,7 @@ int main(int argc, char * argv[])
     readWavData(file, &wavHeader);
     close(file);
 
-    writeAsCFile(leftChannel, rightChannel, &wavHeader);
+    writeAsCFile(leftChannel, rightChannel, &wavHeader, cellv);
     writeAsMatlabFile(leftChannel, rightChannel, &wavHeader);
 
     return 0;
