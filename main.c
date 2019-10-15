@@ -107,12 +107,18 @@ void fprintfChannel(FILE *pFile , int16_t * array, uint32_t size, int cellv)
   int j = 1;	
   for (uint32_t i = 0; i<size; ++i)
   {
+    if(i == size -1)
+    {
+	fprintf(pFile, "%d", array[i]);
+	continue;
+    }
+	  
     if(j<cellv)
     {   
     	fprintf(pFile, "%d,\t", array[i]);
 	j++;
     }
-    if(j==cellv)
+    else if(j==cellv)
     {
 	fprintf(pFile, "\n%d,\t", array[i]);
 	j=1;
@@ -131,6 +137,8 @@ void fprintfChannelMatlab(FILE *pFile , int16_t * array, uint32_t size)
 void readWavData(int fileId, sWavHeader * header)
 {
   numOfSamples = header->Subchunk2Size / (header->NumChannels * header->BitsPerSample/8);
+  printf("\nnumOfSamples:%d  header->Subchunk2Size:%d header->NumChannels:%d header->BitsPerSample:%d\n", numOfSamples, header->Subchunk2Size, header->NumChannels, header->BitsPerSample);
+
   switch (header->BitsPerSample) {
     case 8:
       lowLimit = -128;
@@ -185,7 +193,7 @@ void writeAsCFile(int16_t *leftChannel, int16_t *rightChannel,  sWavHeader * hea
   /// header
   fprintf(pFile, "const uint32_t audioSamplingFrequency = %d;\n",header->SampleRate);
   /// printf left Channel
-  fprintf(pFile, "const size_t leftChannelSize = %d;\n",numOfSamples);
+  fprintf(pFile, "const uint32_t leftChannelSize = %d;\n",numOfSamples);
   fprintf(pFile, "const static int16_t m_musik_table[leftChannelSize] =\n{");
   fprintfChannel(pFile, leftChannel, numOfSamples, cellv);
   fprintf(pFile, "};\n");
